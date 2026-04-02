@@ -665,10 +665,12 @@ async function main() {
           // No model param, but the session model has a [1m] context-window suffix.
           // Sub-agents would inherit it and fail — the runtime strips [1m] to a bare
           // Anthropic model ID (e.g. claude-sonnet-4-6) which is invalid on Bedrock.
+          // Fix: pass a tier alias (sonnet/haiku/opus). The Agent tool schema only accepts
+          // tier aliases for the model param — full Bedrock IDs are rejected by the schema.
+          // OMC_SUBAGENT_MODEL is used only for guidance; derive the tier alias from it.
           const subagentModel = process.env.OMC_SUBAGENT_MODEL || '';
-          const suggestion = subagentModel
-            ? `Pass model="${subagentModel}" (your configured OMC_SUBAGENT_MODEL) explicitly on this ${toolName} call.`
-            : `Set OMC_SUBAGENT_MODEL=<valid-bedrock-id> in your environment (use the model ID from the 400 error message, e.g. "us.anthropic.claude-sonnet-4-5-20250929-v1:0"), then pass that value as the model parameter.`;
+          const tierAlias = normalizeToCcAlias(subagentModel) || normalizeToCcAlias(sessionModel) || 'sonnet';
+          const suggestion = `Pass model="${tierAlias}" explicitly on this ${toolName} call — tier aliases resolve cleanly on Bedrock.`;
           console.log(JSON.stringify({
             continue: true,
             hookSpecificOutput: {
